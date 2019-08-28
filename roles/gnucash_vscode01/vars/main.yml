@@ -1,0 +1,45 @@
+---
+smb_packages:
+  - cifs-utils
+
+gnucash_build_packages:
+  - build-essential
+  - cmake
+  - pkg-config
+  - libglib2.0-dev
+  - libxml2-dev
+  - libxslt1-dev
+  - libwebkit2gtk-4.0-dev
+  - gettext
+  - guile-2.2-dev
+  - xsltproc
+  - libpython3-dev
+  - libsecret-1-dev
+  - libboost-dev
+  - libboost-date-time-dev
+  - libboost-filesystem-dev
+  - libboost-locale-dev
+  - libboost-regex-dev
+  - libboost-system-dev
+  - libgtest-dev
+  - google-mock
+  - libxml2-utils
+  - swig
+  - python3-pip
+  - python3-setuptools
+  - python3-wheel
+
+# gnucash_fldr: /gnucash-3.4
+gnucash_fldr: /gnucash-3.6
+
+vscode_packages:
+  - code
+  # - code-insiders
+  - python3-pip
+
+vscode_extensions:
+  - ms-python.python
+
+vscode_python_packages:
+  - fpdf
+  - pylint
