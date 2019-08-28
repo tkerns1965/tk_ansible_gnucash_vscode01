@@ -1,0 +1,240 @@
+---
+- name: Execute block as sudo
+  become: yes
+  block:
+    - name: Install packages to build gnucash
+      apt:
+        name: "{{ gnucash_build_packages }}"
+        state: latest
+        update_cache: yes
+        install_recommends: no
+
+    - name: Make gnucash subfolders
+      file:
+        path: "{{ gnucash_fldr }}{{ item }}"
+        state: directory
+        mode: 0755
+      with_items:
+        - /SOURCE
+        - /BUILD
+
+    - name: Download gnucash source
+      get_url: 
+        # url: https://github.com/Gnucash/gnucash/releases/download/3.4/gnucash-3.4.tar.bz2
+        url: https://github.com/Gnucash/gnucash/releases/download/3.6/gnucash-3.6.tar.bz2
+        dest: "{{ gnucash_fldr }}/"
+
+    - name: Extract gnucash source
+      unarchive: 
+        # src: "{{ gnucash_fldr }}/gnucash-3.4.tar.bz2"
+        src: "{{ gnucash_fldr }}/gnucash-3.6.tar.bz2"
+        dest: "{{ gnucash_fldr }}/SOURCE/"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+        creates: "{{ gnucash_fldr }}/SOURCE/gnucash/"
+
+    - name: Modify ../CMakeLists.txt
+      vars:
+        file_path: "{{ gnucash_fldr }}/SOURCE/CMakeLists.txt"
+      block:
+        - name: Modify ../CMakeLists.txt -- insert block 1
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: 'option \(ALLOW_OLD_GETTEXT "allow to configure build with a gettext version older than 0.19.6. Some files will not be translated!" OFF\)'
+            marker: "## {mark} ANSIBLE MANAGED BLOCK 1 ##"
+            block: |
+              option (FORCE_SWIG "Force swig wrappers generation." OFF)
+        - name: Modify ../CMakeLists.txt -- insert block 2
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: '# By default they will only be generated when building from a git worktree'
+            marker: "## {mark} ANSIBLE MANAGED BLOCK 2 ##"
+            block: |
+              if (FORCE_SWIG)
+                set(GENERATE_SWIG_WRAPPERS "YES")
+              else()
+        - name: Modify ../CMakeLists.txt -- indent next line
+          lineinfile:
+            path: "{{ file_path }}"
+            regexp: '^(set\(GENERATE_SWIG_WRAPPERS \${BUILDING_FROM_VCS} CACHE BOOL "Controls whether to generate the swig wrappers for guile and python. If not set the wrappers will only be generated when building from a git worktree"\).*)$'
+            line: '  \1'
+            backrefs: yes
+        - name: Modify ../CMakeLists.txt -- insert block 3
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: 'set\(GENERATE_SWIG_WRAPPERS \${BUILDING_FROM_VCS} CACHE BOOL "Controls whether to generate the swig wrappers for guile and python. If not set the wrappers will only be generated when building from a git worktree"\)'
+            marker: "## {mark} ANSIBLE MANAGED BLOCK 3 ##"
+            block: |
+              endif()
+    - name: Modify ../libgnucash/engine/gnc-budget.c
+      vars:
+        file_path: "{{ gnucash_fldr }}/SOURCE/libgnucash/engine/gnc-budget.c"
+      block:
+        - name: Modify ../libgnucash/engine/gnc-budget.c -- insert block 1
+          blockinfile:
+            path: "{{ file_path }}"
+            insertbefore: 'static void just_get_one\(QofInstance \*ent, gpointer data\)'
+            marker: "/* {mark} ANSIBLE MANAGED BLOCK 1 */"
+            block: |
+              struct budget_match
+              {
+                  GncBudget   *budget;
+                  const gchar *name;
+              };
+              
+              static void match_budget_name (QofInstance *ent, gpointer data)
+              {
+                  GncBudget* bgt = GNC_BUDGET(ent);
+                  struct budget_match *bgt_match = (struct budget_match*) data;
+              
+                  if (g_strcmp0 (gnc_budget_get_name (bgt), bgt_match->name) == 0)
+                  {
+                      bgt_match->budget = bgt;
+                  }
+              }
+              
+              GncBudget*
+              gnc_book_lookup_budget_by_name (const QofBook *book, const gchar *name)
+              {
+                  QofCollection *col;
+                  struct budget_match bgt_match;
+              
+                  g_return_val_if_fail(book, NULL);
+                  g_return_val_if_fail(name, NULL);
+              
+                  bgt_match.budget = NULL;
+                  bgt_match.name = name;
+              
+                  col = qof_book_get_collection(book, GNC_ID_BUDGET);
+                  qof_collection_foreach (col, match_budget_name, &bgt_match);
+              
+                  return bgt_match.budget;
+              }
+    - name: Modify ../libgnucash/engine/gnc-budget.h
+      vars:
+        file_path: "{{ gnucash_fldr }}/SOURCE/libgnucash/engine/gnc-budget.h"
+      block:
+        - name: Modify ../libgnucash/engine/gnc-budget.h -- insert block 1
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: 'GncBudget\* gnc_budget_get_default\(QofBook \*book\);'
+            marker: "/* {mark} ANSIBLE MANAGED BLOCK 1 */"
+            block: |
+              #define gnc_book_get_default_budget(b) gnc_budget_get_default((b))
+        - name: Modify ../libgnucash/engine/gnc-budget.h -- insert block 2
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: '#define  gnc_budget_lookup_direct\(g,b\) gnc_budget_lookup\(&\(g\),\(b\)\)'
+            marker: "/* {mark} ANSIBLE MANAGED BLOCK 2 */"
+            block: |
+              #define gnc_book_lookup_budget_by_guid(b,g) gnc_budget_lookup(&(g),(b))
+              GncBudget* gnc_book_lookup_budget_by_name (const QofBook *book, const gchar *name);
+    - name: Modify ../bindings/python/CMakeLists.txt
+      vars:
+        file_path: "{{ gnucash_fldr }}/SOURCE/bindings/python/CMakeLists.txt"
+      block:
+        - name: Modify ../bindings/python/CMakeLists.txt -- insert block 1
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: '    \${CMAKE_SOURCE_DIR}/libgnucash/engine/Account.h'
+            marker: "## {mark} ANSIBLE MANAGED BLOCK 1 ##"
+            block: |
+              ${CMAKE_SOURCE_DIR}/libgnucash/engine/gnc-budget.h
+    - name: Modify ../bindings/python/gnucash_core.i
+      vars:
+        file_path: "{{ gnucash_fldr }}/SOURCE/bindings/python/gnucash_core.i"
+      block:
+        - name: Modify ../bindings/python/gnucash_core.i -- insert block 1
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: '#include "Account.h"'
+            marker: "/* {mark} ANSIBLE MANAGED BLOCK 1 */"
+            block: |
+              #include "gnc-budget.h"
+        - name: Modify ../bindings/python/gnucash_core.i -- insert block 2
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: '%include <Account.h>'
+            marker: "/* {mark} ANSIBLE MANAGED BLOCK 2 */"
+            block: |
+              %include <gnc-budget.h>
+    - name: Modify ../bindings/python/gnucash_core.py
+      vars:
+        file_path: "{{ gnucash_fldr }}/SOURCE/bindings/python/gnucash_core.py"
+      block:
+        - name: Modify ../bindings/python/gnucash_core.py -- insert block 1
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: "    _new_instance = 'xaccMallocAccount'"
+            marker: "## {mark} ANSIBLE MANAGED BLOCK 1 ##"
+            block: |
+              class GncBudget(GnuCashCoreClass): pass
+        - name: Modify ../bindings/python/gnucash_core.py -- insert block 2
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: "Book.add_method\\('qof_book_increment_and_format_counter', 'increment_and_format_counter'\\)"
+            marker: "## {mark} ANSIBLE MANAGED BLOCK 2 ##"
+            block: |
+              Book.add_method('gnc_book_get_default_budget', 'get_default_budget')
+              Book.add_method('gnc_book_lookup_budget_by_guid', 'lookup_budget_by_guid')
+              Book.add_method('gnc_book_lookup_budget_by_name', 'lookup_budget_by_name')
+        - name: Modify ../bindings/python/gnucash_core.py -- insert block 3
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: "    Book.get_price_db, GncPriceDB\\)"
+            marker: "## {mark} ANSIBLE MANAGED BLOCK 3 ##"
+            block: |
+              #Functions that return GncBudget
+              Book.get_default_budget = method_function_returns_instance(
+                  Book.get_default_budget, GncBudget)
+              Book.lookup_budget_by_guid = method_function_returns_instance(
+                  Book.lookup_budget_by_guid, GncBudget)
+              Book.lookup_budget_by_name = method_function_returns_instance(
+                  Book.lookup_budget_by_name, GncBudget)
+        - name: Modify ../bindings/python/gnucash_core.py -- insert block 4
+          blockinfile:
+            path: "{{ file_path }}"
+            insertafter: "Account.name = property\\( Account.GetName, Account.SetName \\)"
+            marker: "## {mark} ANSIBLE MANAGED BLOCK 4 ##"
+            block: |
+              # GncBudget
+              GncBudget.add_methods_with_prefix('gnc_budget_')
+              
+              budget_dict =  {
+                                  'get_guid' : GUID,
+                                  'get_account_period_value' : GncNumeric,
+                                  'get_account_period_actual_value' : GncNumeric
+                             }
+              
+              methods_return_instance(GncBudget, budget_dict)
+              
+              GncBudget.name = property( GncBudget.get_name, GncBudget.set_name )
+    - name: Prepare to build gnucash
+      command: |
+        cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_GNUCASH=ON -DWITH_PYTHON=ON -DFORCE_SWIG=ON
+          -DWITH_AQBANKING=OFF -DWITH_OFX=OFF -DWITH_SQL=OFF {{ gnucash_fldr }}/SOURCE/
+      args:
+        chdir: "{{ gnucash_fldr }}/BUILD"
+
+    - name: Make gnucash
+      make:
+        chdir: "{{ gnucash_fldr }}/BUILD"
+
+    - name: Install gnucash
+      make:
+        chdir: "{{ gnucash_fldr }}/BUILD"
+        target: install
+
+    - name: Create /usr/local/lib/python3/dist-packages/gnucash/gnucash_filedir.py
+      template:
+        src: gnucash_filedir.py
+        dest: /usr/local/lib/python3/dist-packages/gnucash/
+        mode: 0644
+
+- name: Modify .bashrc
+  blockinfile:
+    path: ~/.bashrc
+    insertafter: EOF
+    marker: ""
+    block: |
+      export PYTHONPATH=/usr/local/lib/python3/dist-packages
