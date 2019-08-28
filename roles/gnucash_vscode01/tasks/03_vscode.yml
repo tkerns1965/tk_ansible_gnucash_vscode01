@@ -1,0 +1,73 @@
+---
+- name: Execute block as sudo
+  become: yes
+  block:
+    - name: Install curl
+      apt:
+        name: curl
+        state: latest
+        update_cache: yes
+
+    - name: Prepare to download vscode
+      shell: "{{ item.command }}"
+      args:
+        warn: no
+        creates: "{{ item.creates }}"
+      with_items:
+        - { command: 'curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /root/microsoft.gpg',
+            creates: '/root/microsoft.gpg' }
+        - { command: 'install -o root -g root -m 644 /root/microsoft.gpg /etc/apt/trusted.gpg.d/',
+            creates: '/etc/apt/trusted.gpg.d/microsoft.gpg' }
+        - { command: 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/vscode.list',
+            creates: '/etc/apt/sources.list.d/vscode.list' }
+
+    - name: Install vscode packages
+      apt:
+        name: "{{ vscode_packages }}"
+        state: latest
+        update_cache: yes
+
+    - name: Make vscode files directory
+      file:
+        path: /usr/share/code
+        state: directory
+        mode: 0755
+
+    - name: Copy files for vscode
+      copy:
+        src: "{{ item }}"
+        dest: /usr/share/code/
+        force: no
+      with_items:
+        - /usr/lib/x86_64-linux-gnu/libxcb.so.1
+        - /usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+
+    - name: Edit files for vscode
+      lineinfile:
+        path: "{{ item }}"
+        regexp: '^(?P<a>.*)BIG-REQUESTS(?P<b>.*)$'
+        line: '\g<a>_IG-REQUESTS\g<b>'
+        backrefs: yes
+      with_items:
+        - /usr/share/code/libxcb.so.1
+        - /usr/share/code/libxcb.so.1.1.0
+
+- name: List extensions for vscode
+  command: "code --list-extensions"
+  register: vscode_ext_list
+  changed_when: false
+
+- name: Install extensions for vscode
+  command: "code --install-extension {{ item }}"
+  with_items: "{{ vscode_extensions }}"
+  when: item not in vscode_ext_list.stdout_lines
+
+- name: List python packages
+  command: "python3 -m pip list --user --format columns"
+  register: python3_pip_list
+  changed_when: false
+
+- name: Install python packages for vscode
+  command: "python3 -m pip install -U {{ item }} --user"
+  with_items: "{{ vscode_python_packages }}"
+  when: item not in python3_pip_list.stdout
