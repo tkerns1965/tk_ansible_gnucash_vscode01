@@ -1,0 +1,36 @@
+---
+- name: Create smb mount credentials
+  template:
+    src: .smbcredentials
+    dest: ~/
+    mode: 0600
+
+- name: Execute block as sudo
+  become: yes
+  block:
+    - name: Install smb packages
+      apt:
+        name: "{{ smb_packages }}"
+        state: latest
+        update_cache: yes
+
+    - name: Make smb mount directory
+      file:
+        path: "{{ smbmount_where }}"
+        state: directory
+        mode: 0755
+
+    - name: Create smb mount
+      template:
+        src: smbmount_name.mount
+        dest:  "/etc/systemd/system/{{ smbmount_name }}.mount"
+        mode: 0644
+      register: create_smb_mount
+
+    - name: Publish / enable / start smb mount
+      command: "{{ item }}"
+      with_items:
+        - "systemctl daemon-reload"
+        - "systemctl enable {{ smbmount_name }}.mount"
+        - "systemctl start {{ smbmount_name }}.mount"
+      when: create_smb_mount is changed
