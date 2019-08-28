@@ -1,0 +1,20 @@
+---
+- name: Include private variables
+  include_vars: private.yml
+  tags: 
+    - smb
+    - gnucash
+    - vscode
+
+- name: Import smb tasks
+  import_tasks: 01_smb.yml
+  tags: smb
+
+- name: Import gnucash tasks
+  import_tasks: 02_gnucash.yml
+  tags: gnucash
+
+- name: Import vscode tasks
+  import_tasks: 03_vscode.yml
+  tags: vscode
+  
