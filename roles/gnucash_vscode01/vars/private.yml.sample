@@ -1,0 +1,13 @@
+---
+smb_username: myuser
+smb_password: mypassword
+smb_domain: mydomain
+
+smbmount_name: mymount_name
+smbmount_description: mymount_description
+smbmount_what: mymount_what
+smbmount_where: mymount_where
+smbmount_options: mymount_options
+
+gnucash_data_file: sample.gnucash
+gnucash_pdf_dir: /documents/gnucash/pdf/
