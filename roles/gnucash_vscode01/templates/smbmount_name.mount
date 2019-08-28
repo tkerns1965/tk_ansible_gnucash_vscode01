@@ -1,0 +1,12 @@
+[Unit]
+Description={{ smbmount_description }}
+After=network.target
+
+[Mount]
+What={{ smbmount_what }}
+Where={{ smbmount_where }}
+Options={{ smbmount_options }}
+Type=cifs
+
+[Install]
+WantedBy=multi-user.target
