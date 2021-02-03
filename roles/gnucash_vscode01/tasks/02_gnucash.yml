@@ -20,14 +20,14 @@
 
     - name: Download gnucash source
       get_url: 
-        # url: https://github.com/Gnucash/gnucash/releases/download/3.4/gnucash-3.4.tar.bz2
-        url: https://github.com/Gnucash/gnucash/releases/download/3.6/gnucash-3.6.tar.bz2
+        # url: https://github.com/Gnucash/gnucash/releases/download/3.6/gnucash-3.6.tar.bz2
+        url: https://github.com/Gnucash/gnucash/releases/download/3.11/gnucash-3.11.tar.bz2
         dest: "{{ gnucash_fldr }}/"
 
     - name: Extract gnucash source
       unarchive: 
-        # src: "{{ gnucash_fldr }}/gnucash-3.4.tar.bz2"
-        src: "{{ gnucash_fldr }}/gnucash-3.6.tar.bz2"
+        # src: "{{ gnucash_fldr }}/gnucash-3.6.tar.bz2"
+        src: "{{ gnucash_fldr }}/gnucash-3.11.tar.bz2"
         dest: "{{ gnucash_fldr }}/SOURCE/"
         remote_src: yes
         extra_opts: [--strip-components=1]
