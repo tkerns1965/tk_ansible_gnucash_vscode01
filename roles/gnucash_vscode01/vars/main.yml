@@ -29,8 +29,8 @@ gnucash_build_packages:
   - python3-setuptools
   - python3-wheel
 
-# gnucash_fldr: /gnucash-3.4
-gnucash_fldr: /gnucash-3.6
+# gnucash_fldr: /gnucash-3.6
+gnucash_fldr: /gnucash-3.11
 
 vscode_packages:
   - code
